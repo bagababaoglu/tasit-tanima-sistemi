@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -17,11 +18,15 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 
 public class MainActivity extends AppCompatActivity {
     Button login_button, cancel_button;
     EditText username, password;
     String usrname,pssword;
+    String response;
     ProgressBar progBar;
     private String[] permissions= {Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.INTERNET};
 
@@ -38,25 +43,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 progBar.setVisibility(View.VISIBLE);
-                usrname=username.getText().toString();
-                pssword=password.getText().toString();
-                String [] params =new String[2];
-                params[0]="https://berkay-project-backend.herokuapp.com/auth/workerLogin";
-                params[1]="username: "+usrname+", password: "+pssword;
-                CallAPI callapi =new CallAPI();
-                //String response=callapi.onPostE
-                try{
-                    callapi.get();
-                }catch (Exception e){
-                    Toast.makeText(getApplicationContext(), "Cannot connect to server. "+e.getMessage(),Toast.LENGTH_SHORT).show();
-                }
-                if(true) {
-                    Toast.makeText(getApplicationContext(), "Redirecting...",Toast.LENGTH_SHORT).show();
+                int responseCode=authenticateUser();
+                if(responseCode==200){
                     Intent intent = new Intent(getApplicationContext(), UserScreenActivity.class);
+                    intent.putExtra("response",response);
+                    finish();
                     startActivity(intent);
                 }else{
+                    progBar.setVisibility(View.INVISIBLE);
                     Toast.makeText(getApplicationContext(), "Wrong Credentials",Toast.LENGTH_SHORT).show();
-
                     tx1.setVisibility(View.VISIBLE);
                     tx1.setBackgroundColor(Color.RED);
                     counter--;
@@ -76,10 +71,42 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+    }
+    boolean isBackPressed = false;
+    @Override
+    public void onBackPressed() {
+        if (!isBackPressed) {
+            Toast.makeText(this, "Press Back Again to exit.", Toast.LENGTH_SHORT).show();
+            isBackPressed = true;
+        } else finish();
 
     }
 
+    public int authenticateUser(){
+        usrname=username.getText().toString();
+        pssword=password.getText().toString();
+        //create json object
+        JSONObject person = new JSONObject();
+        try{
+            person.put("username", usrname);
+            person.put("password", pssword);
+        }catch (JSONException e){
+            Log.e("error","JSON");
+        }
+        String [] params =new String[2];
+        params[0]="https://berkay-project-backend.herokuapp.com/auth/workerLogin";
+        params[1]=person.toString();
+        AuthorizeUserTask callapi =new AuthorizeUserTask();
+        callapi.execute(params);
+        try{
+            callapi.get();
+        }catch (Exception e){
+            Toast.makeText(getApplicationContext(), "Cannot connect to server. "+e.getMessage(),Toast.LENGTH_SHORT).show();
+        }
+        response=callapi.getResult();
+        return callapi.getResponseCode();
 
+    }
 
     public void checkPermission (){
 
@@ -102,71 +129,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    /*private static void sendGET() throws IOException {
-        URL obj = new URL(GET_URL);
-        HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-        con.setRequestMethod("GET");
-        con.setRequestProperty("User-Agent", USER_AGENT);
-        int responseCode = con.getResponseCode();
-        System.out.println("GET Response Code :: " + responseCode);
-        if (responseCode == HttpURLConnection.HTTP_OK) { // success
-            BufferedReader in = new BufferedReader(new InputStreamReader(
-                    con.getInputStream()));
-            String inputLine;
-            StringBuffer response = new StringBuffer();
-
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
-            }
-            in.close();
-
-            // print result
-            System.out.println(response.toString());
-        } else {
-            System.out.println("GET request not worked");
-        }
-
-    }
-*/
-    /*private String sendPOST(String POST_PARAMS) throws IOException {
-        URL obj = new URL("https://berkay-project-backend.herokuapp.com/auth/workerLogin");
-        HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-        con.setRequestMethod("POST");
-        con.setRequestProperty("User-Agent", "Mozilla/5.0");
-        con.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
-        // For POST only - START
-        con.setDoOutput(true);
-        try {
-            DataOutputStream wr = new DataOutputStream(con.getOutputStream());
-            wr.writeBytes(POST_PARAMS);
-            wr.flush();
-        }catch(Exception e) {
-            System.out.println(e.getMessage());
-        }
-        // For POST only - END
-
-        int responseCode = con.getResponseCode();
-        System.out.println("POST Response Code :: " + responseCode);
-
-        if (responseCode == HttpURLConnection.HTTP_OK) { //success
-            BufferedReader in = new BufferedReader(new InputStreamReader(
-                    con.getInputStream()));
-            String inputLine;
-            StringBuffer response = new StringBuffer();
-
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
-            }
-            in.close();
-
-            // print result
-            return response.toString();
-        } else {
-            System.out.println("POST request not worked");
-            return null;
-
-        }
-        */
 
     }
 
